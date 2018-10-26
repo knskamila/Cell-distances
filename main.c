@@ -5,7 +5,7 @@
 #include <omp.h>
 #include <math.h>
 
-#define LINE_SIZE 24 //strict file format: assuming fixed length for each line and value
+#define LINE_SIZE 26 //strict file format: assuming fixed length for each line and value
 #define POINT_SIZE 8
 
 #define UP 1
@@ -130,12 +130,14 @@ void process_cells(short int ** inputs, short int * outputs, int max_point)
 }
 
 
-void read_cells(FILE* pFile, short int ** cells_list)
+void read_cells(FILE* pFile, short int ** cells_list, int line_count)
 {
     char line[LINE_SIZE];
-    int i_point = 0;
-    while(fread(line, LINE_SIZE, 1, pFile) != 0)
+    int i_point;
+
+    for (i_point = 0; i_point < line_count; i_point++)
     {
+        fgets(line, LINE_SIZE, pFile);
         int p = 0;
         int i = 0;
         int pos = 0;
@@ -146,10 +148,9 @@ void read_cells(FILE* pFile, short int ** cells_list)
             cells_list[i_point][i] = (line[pos+1]-'0')*10000+(line[pos+2]-'0')*1000+(line[pos+4]-'0')*100+(line[pos+5]-'0')*10+(line[pos+6]-'0');
             if(line[pos] == '-') cells_list[i_point][i] *= -1;
         }
-        i_point++;
     }
-
-    print_cells(cells_list, i_point);
+    fclose(pFile);
+    //print_cells(cells_list, i_point);
 }
 
 int main(int argc, char *argv[])
@@ -171,16 +172,17 @@ int main(int argc, char *argv[])
 
     //determine number of lines
     int line_count = 0;
-    char line[LINE_SIZE+1];
-    while(fread(line, sizeof(char), LINE_SIZE*sizeof(char), pFile) != 0)
+    char line[LINE_SIZE];
+    while(fgets(line, LINE_SIZE, pFile))
     {
         line_count++;
     }
-    printf("line count: %d\n", line_count);
+    rewind(pFile);
+    //printf("line count: %d\n", line_count);
     long output_size = num_combinations(line_count);
     long padded_output_size = closest_p2(output_size); //POWER OF 2
-    printf("output size: %ld\n", output_size);
-    printf("padded: %ld\n", padded_output_size);
+    //printf("output size: %ld\n", output_size);
+    //printf("padded: %ld\n", padded_output_size);
 
     short int ** cells_list = (short int**) malloc(sizeof(short int*) * line_count); //array of points read
     for ( size_t ix = 0; ix < line_count; ++ix )
@@ -198,8 +200,7 @@ int main(int argc, char *argv[])
         count_list[ix] = 0;
     }
 
-    rewind(pFile);
-    read_cells(pFile, cells_list);
+    read_cells(pFile, cells_list, line_count);
     process_cells(cells_list, unsorted_list, line_count);
     //print_output(unsorted_list, count_list, padded_output_size, 1);
     //printf(" \n\n");
