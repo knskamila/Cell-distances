@@ -10,7 +10,7 @@ short int * unsorted_list = (short int*) malloc(sizeof(short int) * padded_outpu
 short int * sorted_list = (short int*) malloc(sizeof(short int) * padded_output_size); //output array
 short int * count_list = (short int*) malloc(sizeof(short int) * padded_output_size); //counting array
 ~~~
-Type conversion may incur a  overhead and it might not. It does depend on how the types are stored and used. If for example a short in is stored in a 32 bit register, converting it to a int is free and thus you have no overhead. In our case we do convert from short int to float which does have, in most cases, require some operations. However in comparison with the square root operation the overhead of converting from short int to float is neglectable.
+Type conversion may incur a  overhead and it might not. It does depend on how the types are stored and used. If for example a short int stored in a 32 bit register, converting it to a int is free and thus you have no overhead. In our case we do convert from short int to float which does, in most cases, require some operations. However in comparison with the square root operation the overhead of converting from short int to float is neglectable.
 
 
 
