@@ -5,19 +5,12 @@
 #include <omp.h>
 #include <math.h>
 
-//pthread_mutex_t mutex_1 = PTHREAD_MUTEX_INITIALIZER;
-
-#define LINE_SIZE 25
+#define LINE_SIZE 25 //strict file format: assuming fixed length for each line and value
 #define POINT_SIZE 8
 
 #define UP 1
 #define DOWN 0
 
-/*typedef struct sort_struct {
-	int * outputs;
-	int output_size;
-}sort_struct;
-*/
 
 int closest_p2(int n)
 {
@@ -29,7 +22,7 @@ int closest_p2(int n)
     return k;
 }
 
-void compare_switch(int i, int j, int dir, int * data)
+void compare_switch(int i, int j, int dir, short int * data)
 {
     if (dir == (data[i] > data[j]))
     {
@@ -40,7 +33,7 @@ void compare_switch(int i, int j, int dir, int * data)
     }
 }
 
-void bitonic_merge(int low, int c, int dir, int * data)
+void bitonic_merge(int low, int c, int dir, short int * data)
 {
     if (c > 1)
     {
@@ -51,7 +44,7 @@ void bitonic_merge(int low, int c, int dir, int * data)
         bitonic_merge(low+k, k, dir, data);
     }
 }
-void bitonic_sort(int low, int c, int dir, int * data)
+void bitonic_sort(int low, int c, int dir, short int * data)
 {
     if (c > 1)
     {
@@ -71,18 +64,19 @@ int factorial(int n)
 
 int num_combinations(int line_count)
 {
+    if(line_count == 1) return 0;
     if(line_count == 2) return 1;
     return factorial(line_count)/(2*factorial(line_count-2));
 }
 //---------------------------------------------------------------------------
 
-void print_cells(int ** arr, int line_count)
+void print_cells(short int ** arr, short int line_count)
 {
     for ( size_t ix = 0; ix < line_count; ++ix )
             printf("%02d.%03d %02d.%03d %02d.%03d\n", arr[ix][0]/1000, abs(arr[ix][0]%1000), arr[ix][1]/1000, abs(arr[ix][1]%1000), arr[ix][2]/1000, abs(arr[ix][2]%1000));
 }
 
-void count_instances(int * arr_outputs, int * arr_pruned, int * arr_counts, int max_point)
+void count_instances(short int * arr_outputs, short int * arr_pruned, short int * arr_counts, int max_point)
 {
     int ix = 0;
     int cx = 0;
@@ -99,7 +93,7 @@ void count_instances(int * arr_outputs, int * arr_pruned, int * arr_counts, int 
     }
 }
 
-void print_output(int * arr_outputs, int * arr_counts, int num_lines, int test)
+void print_output(short int * arr_outputs, short int * arr_counts, int num_lines, int test)
 {
     for ( size_t ix = 0; ix < num_lines; ++ix )
     {
@@ -108,36 +102,35 @@ void print_output(int * arr_outputs, int * arr_counts, int num_lines, int test)
     }
 }
 
-void process_cells(int ** inputs, int * outputs, int max_point)
+void process_cells(short int ** inputs, short int * outputs, int max_point)
 {
     int pos = 0;
-    #pragma omp parallel
-    {
-        int ID = omp_get_thread_num();
-        int t = omp_get_num_threads();
-        for (size_t current_point = ID; current_point < max_point - 1; current_point += t) {
+    //int ID = omp_get_thread_num();
+    //int t = omp_get_num_threads();
+    size_t current_point = 0;
+    #pragma omp parallel for private(current_point)
+        for (current_point = 0; current_point < max_point - 1; current_point++) {
+            int starting_point = num_combinations(max_point) - num_combinations(max_point - current_point);
             float x1, y1, z1;
             x1 = inputs[current_point][0] / 1000.0;
             y1 = inputs[current_point][1] / 1000.0;
             z1 = inputs[current_point][2] / 1000.0;
 
-            for (size_t ix = current_point + 1; ix < max_point; ++ix) {
+            for (size_t i = 1; i < max_point - current_point; ++i) {
                 //compare ix with current_point and store in outputs[current_point+ix-1]
+                size_t ix = current_point + i;
                 float x2, y2, z2;
                 x2 = inputs[ix][0] / 1000.0;
                 y2 = inputs[ix][1] / 1000.0;
                 z2 = inputs[ix][2] / 1000.0;
-                outputs[pos + ix - 1] = (int) (100 * sqrt((z2 - z1) * (z2 - z1) + (y2 - y1) * (y2 - y1) +
+                outputs[starting_point + i - 1] = (int) (100 * sqrt((z2 - z1) * (z2 - z1) + (y2 - y1) * (y2 - y1) +
                                                           (x2 - x1) * (x2 - x1)));
             }
-            #pragma omp critical
-            pos += max_point - current_point - 2;
         }
-    }
 }
 
 
-void read_cells(FILE* pFile, int ** cells_list)
+void read_cells(FILE* pFile, short int ** cells_list)
 {
     char line[LINE_SIZE];
     int i_point = 0;
@@ -183,36 +176,34 @@ int main(int argc, char *argv[])
     {
         line_count++;
     }
-    printf("line count: %d\n", line_count);
     int output_size = num_combinations(line_count);
     int padded_output_size = closest_p2(output_size); //POWER OF 2
+    printf("line count: %d\n", line_count);
+    printf("output size: %d\n", output_size);
+    printf("padded: %d\n", padded_output_size);
 
-    int ** cells_list = (int**) malloc(sizeof(int*) * line_count); //array of points read
+    short int ** cells_list = (short int**) malloc(sizeof(short int*) * line_count); //array of points read
     for ( size_t ix = 0; ix < line_count; ++ix )
     {
-        cells_list[ix] = (int*) malloc(sizeof(int) * 3);
-        //cells_list[ix][0] = 0;
-        //cells_list[ix][1] = 0;
-        //cells_list[ix][2] = 0;
+        cells_list[ix] = (short int*) malloc(sizeof(short int) * 3);
     }
 
-    int * unsorted_list = (int*) malloc(sizeof(int) * padded_output_size); //first output array, NEEDS ACTUAL SIZE
-    int * sorted_list = (int*) malloc(sizeof(int) * output_size); //output array
-    for ( size_t ix = 0; ix < output_size; ++ix )
+    short int * unsorted_list = (short int*) malloc(sizeof(short int) * padded_output_size); //first calculated output
+    short int * sorted_list = (short int*) malloc(sizeof(short int) * padded_output_size); //output array
+    short int * count_list = (short int*) malloc(sizeof(short int) * padded_output_size); //counting array
+    for ( size_t ix = 0; ix < padded_output_size; ++ix )
     {
-        unsorted_list[ix] = 100000;
-        sorted_list[ix] = 100000;
-    }
-    int * count_list = (int*) malloc(sizeof(int) * output_size); //counting array
-    for ( size_t ix = 0; ix < output_size; ++ix )
+        unsorted_list[ix] = 32000;
+        sorted_list[ix] = 32000;
         count_list[ix] = 0;
+    }
 
     rewind(pFile);
     read_cells(pFile, cells_list);
     process_cells(cells_list, unsorted_list, line_count);
-    print_output(unsorted_list, count_list, output_size, 1);
+    print_output(unsorted_list, count_list, padded_output_size, 1);
     printf(" \n\n");
-    bitonic_sort(0, output_size, 1, unsorted_list);
+    bitonic_sort(0, padded_output_size, 1, unsorted_list);
     print_output(unsorted_list, count_list, output_size, 1);
     printf(" \n\n");
     count_instances(unsorted_list, sorted_list, count_list, output_size);
