@@ -12,16 +12,6 @@
 #define DOWN 0
 
 
-int closest_p2(long n)
-{
-    long k=2;
-    while (k<n)
-    {
-        k = k << 1;
-    }
-    return k;
-}
-
 void compare_switch(int i, int j, int dir, short int * data)
 {
     if (dir == (data[i] > data[j]))
@@ -58,10 +48,14 @@ void bitonic_sort(int low, int c, int dir, short int * data)
 }
 
 //--------------------------------------------------------------------------
-long factorial(int n)
+int closest_p2(long n)
 {
-    if(n == 1) return 1;
-    return n*factorial(n-1);
+    long k=2;
+    while (k<n)
+    {
+        k = k << 1;
+    }
+    return k;
 }
 
 long num_combinations(int line_count)
@@ -98,7 +92,7 @@ void print_output(short int * arr_outputs, short int * arr_counts, int num_lines
     for ( size_t ix = 0; ix < num_lines; ++ix )
     {
         if(arr_counts[ix] == 0 - test) break;
-        printf("%02d.%02d %d\n", arr_outputs[ix]/100, abs(arr_outputs[ix]%100), arr_counts[ix]);
+        printf("%5.2f %d\n", (arr_outputs[ix] + .5)/100.0, arr_counts[ix]);
     }
 }
 
