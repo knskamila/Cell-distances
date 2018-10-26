@@ -5,16 +5,16 @@
 #include <omp.h>
 #include <math.h>
 
-#define LINE_SIZE 25 //strict file format: assuming fixed length for each line and value
+#define LINE_SIZE 24 //strict file format: assuming fixed length for each line and value
 #define POINT_SIZE 8
 
 #define UP 1
 #define DOWN 0
 
 
-int closest_p2(int n)
+int closest_p2(long n)
 {
-    int k=2;
+    long k=2;
     while (k<n)
     {
         k = k << 1;
@@ -38,7 +38,9 @@ void bitonic_merge(int low, int c, int dir, short int * data)
     if (c > 1)
     {
         int k = c / 2;
-        for (int i = low;i < low+k ;i++)
+        int i = low;
+        #pragma omp parallel for private(i)
+        for (i = low;i < low+k ;i++)
             compare_switch(i, i+k, dir, data);
         bitonic_merge(low, k, dir, data);
         bitonic_merge(low+k, k, dir, data);
@@ -56,17 +58,15 @@ void bitonic_sort(int low, int c, int dir, short int * data)
 }
 
 //--------------------------------------------------------------------------
-int factorial(int n)
+long factorial(int n)
 {
     if(n == 1) return 1;
     return n*factorial(n-1);
 }
 
-int num_combinations(int line_count)
+long num_combinations(int line_count)
 {
-    if(line_count == 1) return 0;
-    if(line_count == 2) return 1;
-    return factorial(line_count)/(2*factorial(line_count-2));
+    return line_count*(line_count-1)/2;
 }
 //---------------------------------------------------------------------------
 
@@ -134,7 +134,7 @@ void read_cells(FILE* pFile, short int ** cells_list)
 {
     char line[LINE_SIZE];
     int i_point = 0;
-    while(fread(line, sizeof(char), LINE_SIZE*sizeof(char), pFile) != 0)
+    while(fread(line, LINE_SIZE, 1, pFile) != 0)
     {
         int p = 0;
         int i = 0;
@@ -176,11 +176,11 @@ int main(int argc, char *argv[])
     {
         line_count++;
     }
-    int output_size = num_combinations(line_count);
-    int padded_output_size = closest_p2(output_size); //POWER OF 2
     printf("line count: %d\n", line_count);
-    printf("output size: %d\n", output_size);
-    printf("padded: %d\n", padded_output_size);
+    long output_size = num_combinations(line_count);
+    long padded_output_size = closest_p2(output_size); //POWER OF 2
+    printf("output size: %ld\n", output_size);
+    printf("padded: %ld\n", padded_output_size);
 
     short int ** cells_list = (short int**) malloc(sizeof(short int*) * line_count); //array of points read
     for ( size_t ix = 0; ix < line_count; ++ix )
@@ -201,11 +201,11 @@ int main(int argc, char *argv[])
     rewind(pFile);
     read_cells(pFile, cells_list);
     process_cells(cells_list, unsorted_list, line_count);
-    print_output(unsorted_list, count_list, padded_output_size, 1);
-    printf(" \n\n");
+    //print_output(unsorted_list, count_list, padded_output_size, 1);
+    //printf(" \n\n");
     bitonic_sort(0, padded_output_size, 1, unsorted_list);
-    print_output(unsorted_list, count_list, output_size, 1);
-    printf(" \n\n");
+    //print_output(unsorted_list, count_list, output_size, 1);
+    //printf(" \n\n");
     count_instances(unsorted_list, sorted_list, count_list, output_size);
     print_output(sorted_list, count_list, output_size, 0);
 
