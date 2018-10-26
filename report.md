@@ -4,7 +4,7 @@
 What kind of operations that are faster and or can be executed in parallel pipes depends
 on the architecture of your processor. However the general case is that integer operations have a higher throughput than floating point operations. Another thing to take into account is the size of your data type as generally smaller data types have a higher throughput than larger ones, notable exceptions to this are graphics processing units who have a throughput of orders of magnitudes higher for single precision (32 bit) than half precision (16 bit).
 
-In our case we convert the data that we reed in  to short int by multiplying the values with 1000 to not have any decimals and make a cast to short int. This means that the largest and smallest values we need to account for is 10000 and -10000 respectively. Thus we can not use any smaller data size then short int sins short short int (8 bit) only goes between -128 and 128.
+In our case we convert the data that we reed in to short int by multiplying the values with 1000 to not have any decimals and make a cast to short int. This means that the largest and smallest values we need to account for is 10000 and -10000 respectively. Thus we can not use any smaller data size then short int since short short int (8 bit) only goes between -128 and 128.
 ~~~
 short int * unsorted_list = (short int*) malloc(sizeof(short int) * padded_output_size); //first calculated output
 short int * sorted_list = (short int*) malloc(sizeof(short int) * padded_output_size); //output array
