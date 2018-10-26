@@ -1,22 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-//#include <pthread.h>
-#include <omp.h>
+
+//#include <omp.h>
 #include <math.h>
 
 //pthread_mutex_t mutex_1 = PTHREAD_MUTEX_INITIALIZER;
 
 #define LINE_SIZE 24
 #define POINT_SIZE 8
-//#define MAX_SIZE 0xFFFFFFFF
+
 #define UP 1
 #define DOWN 0
 
-typedef struct sort_struct {
+/*typedef struct sort_struct {
 	int * outputs;
 	int output_size;
 }sort_struct;
+*/
 
 int closest_p2(int n)
 {
@@ -28,7 +29,7 @@ int closest_p2(int n)
     return k;
 }
 
-void compare(int i, int j, int dir, int * data)
+void compare_switch(int i, int j, int dir, int * data)
 {
     if (dir == (data[i] > data[j]))
     {
@@ -45,7 +46,7 @@ void bitonic_merge(int low, int c, int dir, int * data)
     {
         int k = c / 2;
         for (int i = low;i < low+k ;i++)
-            compare(i, i+k, dir, data);
+            compare_switch(i, i+k, dir, data);
         bitonic_merge(low, k, dir, data);
         bitonic_merge(low+k, k, dir, data);
     }
@@ -74,7 +75,8 @@ int num_combinations(int line_count)
     return factorial(line_count)/(2*factorial(line_count-2));
 }
 //---------------------------------------------------------------------------
-void print_batch(int ** arr, int line_count)
+
+void print_cells(int ** arr, int line_count)
 {
     for ( size_t ix = 0; ix < line_count; ++ix )
             printf("%02d.%03d %02d.%03d %02d.%03d\n", arr[ix][0]/1000, abs(arr[ix][0]%1000), arr[ix][1]/1000, abs(arr[ix][1]%1000), arr[ix][2]/1000, abs(arr[ix][2]%1000));
@@ -106,7 +108,7 @@ void print_output(int * arr_outputs, int * arr_counts, int num_lines, int test)
     }
 }
 
-void process_batch(int ** inputs, int * outputs, int max_point)
+void process_cells(int ** inputs, int * outputs, int max_point)
 {
     int pos = 0;
     for (size_t current_point = 0; current_point < max_point - 1; current_point++)
@@ -117,7 +119,8 @@ void process_batch(int ** inputs, int * outputs, int max_point)
         z1 = inputs[current_point][2]/1000.0;
 
         for ( size_t ix = current_point+1; ix < max_point; ++ix )
-        { //compare ix with current_point and store in outputs[current_point+ix-1]
+        {
+            //compare ix with current_point and store in outputs[current_point+ix-1]
             float x2, y2, z2;
             x2 = inputs[ix][0]/1000.0;
             y2 = inputs[ix][1]/1000.0;
@@ -129,7 +132,7 @@ void process_batch(int ** inputs, int * outputs, int max_point)
 }
 
 
-void read_batch(FILE* pFile, int ** batch_list)
+void read_cells(FILE* pFile, int ** cells_list)
 {
     char line[LINE_SIZE+1];
     int i_point = 0;
@@ -142,13 +145,13 @@ void read_batch(FILE* pFile, int ** batch_list)
         for (;i<3; ++i, ++p)
         {
             pos = i*POINT_SIZE;
-            batch_list[i_point][i] = (line[pos+1]-'0')*10000+(line[pos+2]-'0')*1000+(line[pos+4]-'0')*100+(line[pos+5]-'0')*10+(line[pos+6]-'0');
-            if(line[pos] == '-') batch_list[i_point][i] *= -1;
+            cells_list[i_point][i] = (line[pos+1]-'0')*10000+(line[pos+2]-'0')*1000+(line[pos+4]-'0')*100+(line[pos+5]-'0')*10+(line[pos+6]-'0');
+            if(line[pos] == '-') cells_list[i_point][i] *= -1;
         }
         i_point++;
     }
 
-    print_batch(batch_list, i_point);
+    print_cells(cells_list, i_point);
 }
 
 int main(int argc, char *argv[])
@@ -166,6 +169,7 @@ int main(int argc, char *argv[])
 
     FILE * pFile;
     pFile = fopen(filename, "r");
+
     //determine number of lines
     int line_count = 0;
     char line[LINE_SIZE+1];
@@ -177,13 +181,13 @@ int main(int argc, char *argv[])
     int output_size = num_combinations(line_count);
     int padded_output_size = closest_p2(output_size); //POWER OF 2
 
-    int ** batch_list = (int**) malloc(sizeof(int*) * line_count); //array of points read in a batch
+    int ** cells_list = (int**) malloc(sizeof(int*) * line_count); //array of points read
     for ( size_t ix = 0; ix < line_count; ++ix )
     {
-        batch_list[ix] = (int*) malloc(sizeof(int) * 3);
-        //batch_list[ix][0] = 0;
-        //batch_list[ix][1] = 0;
-        //batch_list[ix][2] = 0;
+        cells_list[ix] = (int*) malloc(sizeof(int) * 3);
+        //cells_list[ix][0] = 0;
+        //cells_list[ix][1] = 0;
+        //cells_list[ix][2] = 0;
     }
 
     int * unsorted_list = (int*) malloc(sizeof(int) * padded_output_size); //first output array, NEEDS ACTUAL SIZE
@@ -198,8 +202,8 @@ int main(int argc, char *argv[])
         count_list[ix] = 0;
 
     rewind(pFile);
-    read_batch(pFile, batch_list);
-    process_batch(batch_list, unsorted_list, line_count);
+    read_cells(pFile, cells_list);
+    process_cells(cells_list, unsorted_list, line_count);
     print_output(unsorted_list, count_list, output_size, 1);
     printf(" \n\n");
     bitonic_sort(0, output_size, 1, unsorted_list);
@@ -209,6 +213,6 @@ int main(int argc, char *argv[])
     print_output(sorted_list, count_list, output_size, 0);
 
 
-    free(batch_list);
+    free(cells_list);
     return 0;
 }
