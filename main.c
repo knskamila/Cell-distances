@@ -92,7 +92,9 @@ void print_output(short int * arr_outputs, short int * arr_counts, int num_lines
     for ( size_t ix = 0; ix < num_lines; ++ix )
     {
         if(arr_counts[ix] == 0 - test) break;
-        printf("%5.2f %d\n", (arr_outputs[ix] + .5)/100.0, arr_counts[ix]);
+        float out = (float)arr_outputs[ix]/1000;
+        printf("%5.2f %d\n", out, arr_counts[ix]);
+        //printf("%5.2f %d\n", (arr_outputs[ix] + .5)/100.0, arr_counts[ix]);
     }
 }
 
@@ -117,7 +119,7 @@ void process_cells(short int ** inputs, short int * outputs, int max_point)
                 x2 = inputs[ix][0] / 1000.0;
                 y2 = inputs[ix][1] / 1000.0;
                 z2 = inputs[ix][2] / 1000.0;
-                outputs[starting_point + i - 1] = (int) (100 * sqrt((z2 - z1) * (z2 - z1) + (y2 - y1) * (y2 - y1) +
+                outputs[starting_point + i - 1] = (short) (1000 * sqrt((z2 - z1) * (z2 - z1) + (y2 - y1) * (y2 - y1) +
                                                           (x2 - x1) * (x2 - x1)));
             }
         }
