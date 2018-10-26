@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-//#include <omp.h>
+#include <omp.h>
 #include <math.h>
 
 //pthread_mutex_t mutex_1 = PTHREAD_MUTEX_INITIALIZER;
@@ -111,23 +111,28 @@ void print_output(int * arr_outputs, int * arr_counts, int num_lines, int test)
 void process_cells(int ** inputs, int * outputs, int max_point)
 {
     int pos = 0;
-    for (size_t current_point = 0; current_point < max_point - 1; current_point++)
+    #pragma omp parallel
     {
-        float x1, y1, z1;
-        x1 = inputs[current_point][0]/1000.0;
-        y1 = inputs[current_point][1]/1000.0;
-        z1 = inputs[current_point][2]/1000.0;
+        int ID = omp_get_thread_num();
+        int t = omp_get_num_threads();
+        for (size_t current_point = ID; current_point < max_point - 1; current_point += t) {
+            float x1, y1, z1;
+            x1 = inputs[current_point][0] / 1000.0;
+            y1 = inputs[current_point][1] / 1000.0;
+            z1 = inputs[current_point][2] / 1000.0;
 
-        for ( size_t ix = current_point+1; ix < max_point; ++ix )
-        {
-            //compare ix with current_point and store in outputs[current_point+ix-1]
-            float x2, y2, z2;
-            x2 = inputs[ix][0]/1000.0;
-            y2 = inputs[ix][1]/1000.0;
-            z2 = inputs[ix][2]/1000.0;
-            outputs[pos+ix-1] = (int)(100*sqrt((z2-z1)*(z2-z1)+(y2-y1)*(y2-y1)+(x2-x1)*(x2-x1)));
+            for (size_t ix = current_point + 1; ix < max_point; ++ix) {
+                //compare ix with current_point and store in outputs[current_point+ix-1]
+                float x2, y2, z2;
+                x2 = inputs[ix][0] / 1000.0;
+                y2 = inputs[ix][1] / 1000.0;
+                z2 = inputs[ix][2] / 1000.0;
+                outputs[pos + ix - 1] = (int) (100 * sqrt((z2 - z1) * (z2 - z1) + (y2 - y1) * (y2 - y1) +
+                                                          (x2 - x1) * (x2 - x1)));
+            }
+            #pragma omp critical
+            pos += max_point - current_point - 2;
         }
-        pos += max_point - current_point - 2;
     }
 }
 
@@ -165,8 +170,9 @@ int main(int argc, char *argv[])
     }
 
     param_t = atoi(&argv[1][2]);
-    char filename[] = "cells.txt";
+    omp_set_num_threads(param_t);
 
+    char filename[] = "cells.txt";
     FILE * pFile;
     pFile = fopen(filename, "r");
 
