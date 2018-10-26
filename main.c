@@ -7,7 +7,7 @@
 
 //pthread_mutex_t mutex_1 = PTHREAD_MUTEX_INITIALIZER;
 
-#define LINE_SIZE 24
+#define LINE_SIZE 25
 #define POINT_SIZE 8
 
 #define UP 1
@@ -134,7 +134,7 @@ void process_cells(int ** inputs, int * outputs, int max_point)
 
 void read_cells(FILE* pFile, int ** cells_list)
 {
-    char line[LINE_SIZE+1];
+    char line[LINE_SIZE];
     int i_point = 0;
     while(fread(line, sizeof(char), LINE_SIZE*sizeof(char), pFile) != 0)
     {
