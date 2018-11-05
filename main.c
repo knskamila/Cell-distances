@@ -9,6 +9,7 @@
 #define POINT_SIZE 8
 
 #define MAX_OUTPUT 3464
+#define MAX_LINE_COUNT 1000000 //maximum of lines to be allocated at once
 
 
 void print_cells(short int ** arr, short int line_count)
@@ -18,7 +19,7 @@ void print_cells(short int ** arr, short int line_count)
 }
 
 
-void print_output(short int * arr_counts)
+void print_output(int * arr_counts)
 {
     for ( size_t ix = 0; ix < MAX_OUTPUT; ++ix )
     {
@@ -30,16 +31,13 @@ void print_output(short int * arr_counts)
     }
 }
 
-void process_cells(short int ** inputs, short int * outputs, int max_point)
+void process_cells(short int ** inputs, int * outputs, long int max_point)
 {
-    int pos = 0;
-    //int ID = omp_get_thread_num();
-    //int t = omp_get_num_threads();
     size_t current_point = 0;
         #pragma omp parallel for private(current_point)
         for (current_point = 0; current_point < max_point - 1; current_point++) {
             float x1, y1, z1;
-            short int * outputs_local = (short int*) malloc(sizeof(short int) * MAX_OUTPUT);
+            int * outputs_local = (int*) malloc(sizeof(int) * MAX_OUTPUT);
     	    for ( size_t ix = 0; ix < MAX_OUTPUT; ++ix )
             {
                 outputs_local[ix] = 0;
@@ -55,11 +53,11 @@ void process_cells(short int ** inputs, short int * outputs, int max_point)
                 x2 = inputs[ix][0] / 1000.0;
                 y2 = inputs[ix][1] / 1000.0;
                 z2 = inputs[ix][2] / 1000.0;
-                int index = (short) (100 * sqrt((z2 - z1) * (z2 - z1) + (y2 - y1) * (y2 - y1) +
+                int index = (short) (100 * sqrtf((z2 - z1) * (z2 - z1) + (y2 - y1) * (y2 - y1) +
                                                 (x2 - x1) * (x2 - x1)));
                 outputs_local[index]++;
             }
-
+        if(current_point % 10000 == 0) printf("silly\n");
         #pragma omp critical
         {
             for ( size_t ix = 0; ix < MAX_OUTPUT; ++ix )
@@ -69,11 +67,49 @@ void process_cells(short int ** inputs, short int * outputs, int max_point)
     }
 }
 
+/*void process_sequential(short int ** inputs, short int * outputs, int max_point)
+{
+    size_t current_point = 0;
+#pragma omp parallel for private(current_point)
+    for (current_point = 0; current_point < max_point - 1; current_point++) {
+        float x1, y1, z1;
+        short int * outputs_local = (short int*) malloc(sizeof(short int) * MAX_OUTPUT);
+        for ( size_t ix = 0; ix < MAX_OUTPUT; ++ix )
+        {
+            outputs_local[ix] = 0;
+        }
+        x1 = inputs[current_point][0] / 1000.0;
+        y1 = inputs[current_point][1] / 1000.0;
+        z1 = inputs[current_point][2] / 1000.0;
 
-void read_cells(FILE* pFile, short int ** cells_list, int line_count)
+        for (size_t i = 1; i < max_point - current_point; ++i) {
+            //compare ix with current_point and store in outputs[current_point+ix-1]
+            size_t ix = current_point + i;
+            float x2, y2, z2;
+            x2 = inputs[ix][0] / 1000.0;
+            y2 = inputs[ix][1] / 1000.0;
+            z2 = inputs[ix][2] / 1000.0;
+            int index = (short) (100 * sqrtf((z2 - z1) * (z2 - z1) + (y2 - y1) * (y2 - y1) +
+                                             (x2 - x1) * (x2 - x1)));
+            outputs_local[index]++;
+        }
+
+        printf("batch: %ld\n", current_point);
+
+#pragma omp critical
+        {
+            for ( size_t ix = 0; ix < MAX_OUTPUT; ++ix )
+                outputs[ix] += outputs_local[ix];
+        }
+        free(outputs_local);
+    }
+}
+*/
+
+void read_cells(FILE* pFile, short int ** cells_list, long int line_count)
 {
     char line[LINE_SIZE];
-    int i_point;
+    size_t i_point;
 
     for (i_point = 0; i_point < line_count; i_point++)
     {
@@ -111,36 +147,59 @@ int main(int argc, char *argv[])
     pFile = fopen(filename, "r");
 
     //determine number of lines
-    int line_count = 0;
+    long int line_count = 0;
     char line[LINE_SIZE];
     while(fgets(line, LINE_SIZE, pFile))
     {
         line_count++;
     }
     rewind(pFile);
-    //printf("line count: %d\n", line_count);
+    printf("line count: %ld\n", line_count);
+    //getchar();
 
-
-    short int ** cells_list = (short int**) malloc(sizeof(short int*) * line_count); //array of points read
-    for ( size_t ix = 0; ix < line_count; ++ix )
-    {
-        cells_list[ix] = (short int*) malloc(sizeof(short int) * 3);
-    }
-
-    //short int * output_list = (short int*) malloc(sizeof(short int) * MAX_OUTPUT); //output array
-    short int * count_list = (short int*) malloc(sizeof(short int) * MAX_OUTPUT); //counting array
+    int * count_list = (int*) malloc(sizeof(int) * MAX_OUTPUT); //counting array
     for ( size_t ix = 0; ix < MAX_OUTPUT; ++ix )
     {
-        //output_list[ix] = ix;
         count_list[ix] = 0;
     }
+    short int ** cells_list;
+    if(line_count > MAX_LINE_COUNT)
+    {
+        int parts = line_count / MAX_LINE_COUNT + 1;
 
-    read_cells(pFile, cells_list, line_count);
-    process_cells(cells_list, count_list, line_count);
-    //count_instances(unsorted_list, sorted_list, count_list, output_size);
+        cells_list = (short int**) malloc(sizeof(short int*) * MAX_LINE_COUNT); //maximum array
+        for ( size_t ix = 0; ix < line_count; ++ix )
+        {
+            cells_list[ix] = (short int*) malloc(sizeof(short int) * 3);
+        }
+
+        short int ** full_cells_list = (short int**) malloc(sizeof(short int*) * line_count); //maximum array
+        for ( size_t ix = 0; ix < line_count; ++ix )
+        {
+            cells_list[ix] = (short int*) malloc(sizeof(short int) * 3);
+        }
+
+        for(int i = 0; i < parts; i++)
+        {
+            read_cells(pFile, cells_list, line_count);
+            process_cells(cells_list, count_list, MAX_LINE_COUNT);
+        }
+
+    }
+    else
+    {
+
+        cells_list = (short int**) malloc(sizeof(short int*) * line_count); //array of points read
+        for ( size_t ix = 0; ix < line_count; ++ix )
+        {
+            cells_list[ix] = (short int*) malloc(sizeof(short int) * 3);
+        }
+        read_cells(pFile, cells_list, line_count);
+        process_cells(cells_list, count_list, line_count);
+
+    }
+
     print_output(count_list);
-
-
     free(cells_list);
     return 0;
 }
