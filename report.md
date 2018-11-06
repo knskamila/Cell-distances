@@ -19,9 +19,10 @@ Strings are encoded using the char data type as a building block for different c
 
 In the Ascii lookup table the digits are assigned number 48 - 56 and the signs + and - bot have number 43 and 45 respectively. Given the fixed format that we are given in the text file we could read line by line. Each line would be split up in the five characters read for each coordinate. The first character we would subtract 48 and then chest as a short in and multiplied with 10000 and added to our short int variable. The next chars would all go through the same process but be multiplied with 1000, 100, 10 and 1 respectively. lastly we need to flip the last bit in our short int variable if the first char was -.
 
-~~~
+~~~~~
 cells_list[i_point][i] = (line[pos+1]-'0')*10000+(line[pos+2]-'0')*1000+(line[pos+4]-'0')*100+(line[pos+5]-'0')*10+(line[pos+6]-'0');
-~~~
+~~~~~
+
 ## Memory management
 One obvious thing one should think about while managing memory is of course to use suitable data types as to not waste space. As we have mentioned before this usually also carries a higher throughput with it as well. In our case this is not quite enough, since our upper limit of cells is $2^{32}$. For the worst case coordinates will take up $3*2^{32}*2$ bytes which is almost 26 GB. Hence we need a more sophisticated way of dealing with large files containing lots of cells. One way is to split up the work of calculating distances in to blocks. Each block will work on a different piece of the file, in the first layer of the algorithm we split our threads in to teams using the distribute pragma each team will work on calculating the distances within each block, once each team is done the distance between each cell in the different block would be calculated. Once that is done the memory for each block is deallocated and the next piece of the file can be read in to the next two blocks. Once all of the blocks are calculated as well as the neighboring paired block distances all the distances between cells within different blocks must be calculated. Thus in the second level of the algorithm we load each pairing of blocks once more but merge the teams and only calculate the distances between cells in different blocks. Since there is never more then two blocks worth of data at the same time we can regulate the amount of data being used by the size of the data that is loaded in each block.
 
